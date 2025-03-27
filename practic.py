@@ -8,7 +8,7 @@ dotenv.load_dotenv()
 llm = HuggingFaceEndpoint(
     repo_id = 'mistralai/Mistral-7B-Instruct-v0.3',
     temperature= 0.2,
-    max_new_tokens= 25
+    max_new_tokens= 48
 
 )
 
