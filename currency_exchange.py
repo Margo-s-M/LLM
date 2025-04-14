@@ -8,74 +8,85 @@
 
 import os
 import dotenv
-import re
-import requests
 from langchain_core.tools import Tool
-from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
+from langchain_community.utilities import GoogleSerperAPIWrapper
+from langchain_core.messages import SystemMessage, HumanMessage
 
-# --- 1. Завантаження змінних середовища ---
+
 dotenv.load_dotenv()
 
-# --- 2. LLM модель ---
 llm = ChatGoogleGenerativeAI(
     model='gemini-2.0-flash',
     google_api_key=os.getenv('GEMINI_API_KEY'),
 )
 
-# --- 3. Функція автоматичної конвертації ---
-def auto_currency_convert_api(input_str: str) -> str:
+# === 1. Конвертація валют ===
+def convert_currency(nominal: float, rate: float) -> float:
     """
-    Приймає рядок типу 'Конвертуй 100 USD в EUR' і повертає результат.
+    Конвертує валюту за курсом.
+
+    :param nominal: сума в початковій валюті
+    :param rate: курс до цільової валюти
+    :return: конвертована сума
     """
-    match = re.search(r'(\d+(?:\.\d+)?)\s*([A-Z]{3})\s*в\s*([A-Z]{3})', input_str.upper())
-    if not match:
-        return "Формат запиту має бути: 'Конвертуй 100 USD в EUR'"
+    return round(nominal * rate, 2)
 
-    amount = float(match.group(1))
-    from_currency = match.group(2)
-    to_currency = match.group(3)
 
-    url = f"https://api.exchangerate.host/convert?from={from_currency}&to={to_currency}&amount={amount}"
-    response = requests.get(url)
+# === 2. Функція-помічник, яка робить конвертацію та вивід ===
+def currency_conversion_tool(input_str: str) -> str:
+    """
+    Очікує на вхід рядок у форматі: "100, 38.5"
+    Де 100 — це сума, 38.5 — курс.
 
-    if response.status_code != 200:
-        return "Помилка при отриманні даних з API."
+    :return: Результат конвертації.
+    """
+    try:
+        nominal_str, rate_str = input_str.split(',')
+        nominal = float(nominal_str.strip())
+        rate = float(rate_str.strip())
+        result = convert_currency(nominal, rate)
+        return f"{nominal} * {rate} = {result}"
+    except Exception as e:
+        return f"Помилка у вводі: {e}. Очікуваний формат: 'номінал, курс'"
 
-    data = response.json()
-    result = round(data['result'], 2)
-    rate = round(data['info']['rate'], 4)
 
-    return f"{amount} {from_currency} = {result} {to_currency} за курсом {rate}"
+# === 3. Tool для пошуку ===
+search = GoogleSerperAPIWrapper()
+tools = [
+    Tool(
+        name="Search",
+        func=search.run,
+        description="Використовуй для пошуку курсу валют в інтернеті.",
+    ),
+    Tool(
+        name="CurrencyConverter",
+        func=currency_conversion_tool,
+        description="Конвертує валюту. Введи 'номінал, курс' напр. '100, 38.5'",
+    )
+]
 
-# --- 4. Створення Tool ---
-currency_conversion_tool = Tool(
-    name="CurrencyConverter",
-    func=auto_currency_convert_api,
-    description="Автоматично конвертує валюту. Наприклад: 'Конвертуй 100 USD в EUR'"
-)
-
-# --- 5. Додаємо Tool до агента ---
-tools = [currency_conversion_tool]
+# === 4. Створення агента ===
 agent = create_react_agent(model=llm, tools=tools)
 
-# --- 6. Стартове повідомлення та сесія ---
 data_input = {
     'messages': [
-        SystemMessage(content='Ти помічник у фінансових питаннях. Твоя задача — конвертувати валюту за запитом користувача. '
-                              'Використовуй інструмент CurrencyConverter, коли користувач просить "Конвертуй 100 USD в EUR" або подібне.'),
+        SystemMessage(content='Ти помічник у фінансових питаннях. '
+                              'Ти можеш шукати курс валют та робити конвертацію. '
+                              'Щоб конвертувати, використай інструмент CurrencyConverter. '
+                              'Щоб знайти курс, використай інструмент Search. '
+                              'Спочатку дізнайся курс, потім конвертуй валюту.'),
     ]
 }
 
-# --- 7. Цикл взаємодії ---
+# === 5. Запуск циклу спілкування ===
 while True:
-    user_input = input("YOU: ")
-    if user_input == "":
+    user_input = input('YOU: ')
+    if user_input == '':
         break
 
     data_input['messages'].append(HumanMessage(content=user_input))
     response = agent.invoke(data_input)
     data_input = response
-
-    print("🤖:", data_input['messages'][-1].content)
+    print(f": {data_input['messages'][-1].content}")
