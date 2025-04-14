@@ -19,7 +19,8 @@ st.markdown('Введіть імя відомої особи з якою ви х
 person =st.text_input('Вкажіть імя ')
 print(person)
 user_input = st.chat_input("Привіт давай по спілкуємося ")
-
+if 'message' not in st.session_state:
+ st.session_state.message = []
 
 if st.button('Старт чат'):
  st.session_state.message = [
