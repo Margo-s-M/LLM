@@ -1,17 +1,18 @@
 
 import torch   #основна бібліотека для глибокого навчання.
 from torchvision import transforms  #модуль для попередньої обробки зображень
-from torchvision import models #містить готові архітектури моделей (в т.ч. resnet50).
+from torchvision.models import ResNet50_Weights #містить готові архітектури моделей (в т.ч. resnet50).
 from torch import nn  #модуль для створення нейронних мереж.
 import torch.nn.functional as F #функціональний API для активаційF.relu, F.softmax, F.sigmoid, втрат(loss): F.cross_entropy, F.mse_loss, F.nll_loss ,лінійні операції: F.linear, F.conv2d, F.batch_norm nn створює об'єкт (наприклад, модуль), а F — викликає операцію без збереження стану.
 import PIL.Image  #для відкриття та обробки зображень.
+from torchvision import models
 # 🔧 Клас моделі на основі ResNet50
 class MyModel(nn.Module):
     def __init__(self):
         super(MyModel, self).__init__()
 
         # Завантаження ResNet50
-        resnet= models.resnet50(pretrained=True)
+        resnet= models.resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
         for param in resnet.parameters():
             param.requires_grad = False
 
@@ -63,7 +64,7 @@ def predict(model: MyModel, image_tensor: torch.Tensor, classes: list[str]) -> s
 # 🚀 Основний блок запуску
 if __name__ == "__main__":
     model_path = "data/model_weights.pth"
-    image_path = "data/000000000023.jpg"
+    image_path = "data/03.jpg"
     class_labels = ['bird', 'drone']
 
     model = load_model(model_path)
