@@ -29,7 +29,7 @@ class MyModel(nn.Module):
         return out
 
 
-# 📦 Функція завантаження моделі
+#  Функція завантаження моделі
 def load_model(weights_path: str) -> MyModel:
     model = MyModel()
     model.load_state_dict(torch.load('data/model_weights.pth', weights_only=True))
@@ -37,7 +37,7 @@ def load_model(weights_path: str) -> MyModel:
     return model
 
 
-# 🖼️ Функція обробки зображення
+#  Функція обробки зображення
 def preprocess_image(image_path: str) -> torch.Tensor:
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
@@ -49,7 +49,7 @@ def preprocess_image(image_path: str) -> torch.Tensor:
     return transform(image).unsqueeze(0)
 
 
-# 🔍 Функція передбачення
+# Функція передбачення
 def predict(model: MyModel, image_tensor: torch.Tensor, classes: list[str]) -> str:
     with torch.no_grad():
         logits = model(image_tensor)
@@ -61,7 +61,7 @@ def predict(model: MyModel, image_tensor: torch.Tensor, classes: list[str]) -> s
     return classes[predicted_idx]
 
 
-# 🚀 Основний блок запуску
+#  Основний блок запуску
 if __name__ == "__main__":
     model_path = "data/model_weights.pth"
     image_path = "data/03.jpg"
